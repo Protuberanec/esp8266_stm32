@@ -1,0 +1,65 @@
+в конце каждой команды добавлять \r\n
+
+AT+CWMODE=3
+AT+RST
+AT+CWJAP="lifeisgood","qpwoeiruty!--"	-- подключиться к сети
+AT+CWJAP="AndroidAP901B","effi6715"	-- подключиться к сети
+AT+CWJAP_DEF="lifeisgood","qpwoeiruty!--"	-- подключиться к сети
+AT+CWQAP -- отключиться от WiFi сети
+AT+CIFSR
+//подключение к серверу!
+AT+CIPSTART="TCP","192.168.13.132",33000		
+передача данных
+AT+CIPSEND=4
+	test
+		
+	Как AP
+	AT+CWMODE=1 (1 - SM, 2 - AP, 3 - AP,SM)
+	AT+RST
+	AT+CWJAP="lifeisgood","qpwoeiruty!--"
+	AT+CWJAP?
+	AT+CIPSTA?
+	AT+CWDHCP=1,1
+	AT+CIPSTART="TCP","192.168.13.132",33000
+	AT+CIPSEND=[length]
+
+как сервер
+	AT+CIPMUX=1
+	AT+CIPSERVER=1,30000
+	AT+CIPSENDEX=[link id],[length]
+		AT+CIPSENDEX=0,10
+		> test test!
+		
+init mDNS
+	AT+MDNS=1,"myTest","iot",30000
+
+
+
+Как AP
+	AT+CWMODE=1 (1 - SM, 2 - AP, 3 - AP,SM)
+	AT+RST
+	AT+CWJAP="lifeisgood","qpwoeiruty!--"
+	AT+CWJAP?	
+		AT+CWJAP?\r\r\nNo AP\r\n
+		\r\n
+		OK\r\n
+
+	AT+CIPSTA?
+	AT+CWDHCP=1,1
+	AT+CIPSTART="TCP","192.168.13.132",33000
+	AT+CIPSEND=[length]
+
+как сервер
+	AT+CIPMUX=1
+	AT+CIPSERVER=1,30000
+	AT+CIPSENDEX=[link id],[length]
+		AT+CIPSENDEX=0,10
+		> test test!
+
+если данные пересылаются на сервер
+	то ответом будет
+		+IPD,0,18:get data data     
+	закрытие клиента
+		0,CLOSED\r\n
+
+
