@@ -30,6 +30,7 @@ SOFTWARE.
 /* Includes */
 #include "stm32f0xx.h"
 #include "esp.h"
+#include "my_str.h"
 
 /* Private macro */
 /* Private variables */
@@ -45,13 +46,23 @@ SOFTWARE.
 */
 int count = 0;
 int res[3] = {0,0,0};
-extern uint8_t cmd_ok[10];
+extern uint8_t cmd_ok[COUNT_NUM_CMD];
+extern struct DataFromClient clientData[2];
 
 void work_esp() {
 	esp_processData(PD_DOIT_NORMAL);
 	if ((esp_getStatus() & ESP_STATUS_CONNECTED) != ESP_STATUS_CONNECTED) {
 		//I think need to stop work!!!
 		return;
+	}
+
+	if ((esp_getStatus() & ESP_STATUS_NEW_DATA0) == ESP_STATUS_NEW_DATA0) {
+		if (strCmp(clientData[0].data, "blink\0") == 0) {
+			GPIOC->ODR ^= GPIO_ODR_9;
+
+		}
+
+		esp_DataProcessed();	//don't forget reset the information about processed data!!
 	}
 }
 
@@ -63,15 +74,22 @@ int main(void)
 	while(esp_SetWiFiMode(ESP_MODE3) == ESP_ERROR_CMD_BAD) {
 		count++;
 	}
-	while(esp_connect("lifeisgood\0","qpwoeiruty!--\0") == ESP_ERROR_CMD_BAD) {
+	while(esp_connect((uint8_t*)("lifeisgood\0"),(uint8_t*)("qpwoeiruty!--\0")) == ESP_ERROR_CMD_BAD) {
 		count++;
 	}
+
+
 //	while (esp_connect("AndroidAP901B\0", "effi6715\0") == ESP_ERROR_CMD_BAD) { }
 	while (esp_getIp() == ESP_ERROR_CMD_BAD) {
 		count++;
 	}
 
+
 	while(esp_createServer(30000) == ESP_ERROR_CMD_BAD) {
+		count++;
+	}
+
+	while(esp_setTimeout(180) == ESP_ERROR_CMD_BAD) {
 		count++;
 	}
 
@@ -79,7 +97,6 @@ int main(void)
 	while (1)
 	{
 		work_esp();
-
 	}
 }
 

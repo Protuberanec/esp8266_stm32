@@ -10,56 +10,18 @@
 uint8_t curCMD = 0;
 uint8_t cmd_ok[COUNT_NUM_CMD] = {0};
 uint8_t esp_status = 0;
-
+uint8_t connectedUser = 0;
 uint8_t currentIP[16];
+
+uint8_t currentData = 0;
+struct DataFromClient clientData[2];
 
 void TIM17_IRQHandler() {
 	TIM17->SR &= ~TIM_SR_UIF;
 	ESP_LED_TOGGLE();
 }
 
-uint16_t sizeStr(const char* str) {
-	uint16_t size = 0;
-	while(str[size++] != '\0');
-	return size-1;
-}
 
-uint8_t strCmp(char* str1, char* str2) {
-    int i = 0;
-    while(str1[i] == str2[i]) {
-        if (str1[i] == 0x00 && str2[i] == 0x00) {
-            return 0;
-        }
-        ++i;
-    }
-
-    if (str1[i] == 0x00)
-        return 2;
-    return 1;
-}
-
-void strnCpy(char* source, char* dst, uint8_t startPos, uint8_t size) {
-	for (int i = 0; i < size; i++) {
-		dst[i] = source[startPos + i];
-	}
-}
-
-uint8_t Str1inStr2(char* str1, char* str2) {
-    int i = 0;
-    while(str1[i] == str2[i]) {
-        if (str1[i] == 0x00) {
-            return 0;
-        }
-        if (str2[i] == 0) {
-        	return 2;
-        }
-        ++i;
-    }
-
-    if (str1[i] == 0x00)
-        return 0;
-    return 1;
-}
 
 uint8_t checkStatusCmd(uint8_t numCmd) {
 	uint16_t temp = 0;
@@ -77,22 +39,6 @@ uint8_t checkStatusCmd(uint8_t numCmd) {
 	return ESP_ERROR_CMD_OK;
 }
 
-uint8_t intToStr(uint16_t num, char* numStr) {
-	numStr[0] = num / 10000 + 0x30;
-	num -= (num/10000) * 10000;
-
-	numStr[1] = num/1000 + 0x30;
-	num -= (num/1000) * 1000;
-
-	numStr[2] = num/100 + 0x30;
-	num -= (num/100) * 100;
-
-	numStr[3] = num/10 + 0x30;
-	num -= (num/10) * 10;
-
-	numStr[4] = num + 0x30;
-}
-
 void esp_init() {
 	esp_indication();
 	esp_timerIndication();
@@ -101,7 +47,7 @@ void esp_init() {
 
 void esp_indication() {
 	RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
-	GPIOC->MODER |= GPIO_MODER_MODER8_0;
+	GPIOC->MODER |= GPIO_MODER_MODER8_0 | GPIO_MODER_MODER9_0;
 }
 
 void esp_timerIndication() {
@@ -119,6 +65,9 @@ uint8_t esp_getStatus() {
 	return esp_status;
 }
 
+uint8_t esp_DataProcessed() {
+	esp_status &= ~ESP_STATUS_NEW_DATA0;
+}
 
 void esp_reset() {
 	curCMD = cmd_reset;
@@ -134,7 +83,7 @@ void esp_reset() {
 	}
 }
 
-uint8_t esp_connect(const char* ssid_name, const char* ssid_pass) {
+uint8_t esp_connect(const uint8_t* ssid_name, const uint8_t* ssid_pass) {
 	curCMD = cmd_connect;
 	esp_status &= ~ESP_STATUS_BUSY;
 	USART_PutString(ESP_CMD_CONNECT, sizeStr(ESP_CMD_CONNECT));
@@ -150,7 +99,7 @@ uint8_t esp_connect(const char* ssid_name, const char* ssid_pass) {
 	return checkStatusCmd(curCMD);
 }
 
-uint8_t esp_SetWiFiMode(const char* mode) {
+uint8_t esp_SetWiFiMode(const uint8_t* mode) {
 	curCMD = cmd_set_mode;
 	esp_status &= ~ESP_STATUS_BUSY;
 	USART_PutString(ESP_CMD_MODE, sizeStr(ESP_CMD_MODE));
@@ -174,6 +123,7 @@ uint8_t esp_isConnected() {
 	if (esp_processData(PD_DOIT_NORMAL) == 0) {
 
 	}
+	return 0;
 }
 
 uint8_t esp_getIp() {
@@ -189,14 +139,15 @@ uint8_t esp_getIp() {
 uint8_t esp_setMultConn() {
 	curCMD = cmd_multConn;
 	esp_status &= ~ESP_STATUS_BUSY;
-	USART_PutString(ESP_CMD_SETMULTCONN, sizeStr(ESP_CMD_SETMULTCONN));
+	USART_PutString(ESP_CMD_CIPMUX, sizeStr(ESP_CMD_CIPMUX));
 	USART_SendDataFromBuffer();
 
 	return checkStatusCmd(curCMD);
 }
 
+
 uint8_t esp_createServer(uint16_t port) {
-	esp_setMultConn();
+	while (esp_setMultConn() != ESP_ERROR_CMD_OK);
 
 	char strPort[5] = {0};
 	intToStr(port, &strPort[0]);	//very specific function!!!
@@ -204,11 +155,33 @@ uint8_t esp_createServer(uint16_t port) {
 	curCMD = cmd_createServer;
 	esp_status &= ~ESP_STATUS_BUSY;
 	USART_PutString(ESP_CMD_CONF_TCP_SERV, sizeStr(ESP_CMD_CONF_TCP_SERV));
-	USART_PutString(strPort, 5);
-	USART_PutString("\r\n",2);
+//	USART_PutString(strPort, 5);
+//	USART_PutString("\r\n",2);
 
 	USART_SendDataFromBuffer();
 	return checkStatusCmd(curCMD);
+}
+
+uint8_t esp_setTimeout(uint16_t sec) {
+	curCMD = cmd_cipsto;
+	esp_status &= ~ESP_STATUS_BUSY;
+	USART_PutString(ESP_CMD_CIPSTO, sizeStr(ESP_CMD_CIPSTO));
+	USART_SendDataFromBuffer();
+
+	return checkStatusCmd(curCMD);
+}
+
+uint8_t esp_sendToClinetData(uint8_t id, const uint8_t* data, uint8_t size) {
+	curCMD = cmd_sendex;
+	esp_status &= ~ESP_STATUS_BUSY;
+	if (!(connectedUser & (1 << id))) {
+		return ESP_ERROR_NO_CLIENT;
+	}
+
+//	ESP_CMD_CIPSENDEX
+	//AT+CIPSENDEX=id,len
+	//
+
 }
 
 uint8_t esp_processData(uint8_t doit) {
@@ -220,7 +193,10 @@ uint8_t esp_processData(uint8_t doit) {
 
 	static uint8_t ptrCmd = 0;
 	static uint8_t cmd[64] = {0};
+	static uint8_t ptrData = 0;
+	static uint8_t sizeData = 0;
 	static uint8_t countCR = 0;	//var for count \r, when answer on cmd it's must be 2
+	static uint8_t statusData = 0;
 
 	if (doit == PD_DOIT_RESTART) {
 		ptrCmd = 0;
@@ -234,11 +210,54 @@ uint8_t esp_processData(uint8_t doit) {
 		return 0;
 	}
 
+	if (statusData) {
+		switch (statusData) {
+			case 1 :	//get ID client
+				if (espByte == ',') {
+					++statusData;
+					ptrData = 0;
+					break;
+				}
+				clientData[0].id_client = espByte - 0x30;
+			break;
+			case 2 : //get size data
+				if (espByte == ':') {
+					++statusData;
+					clientData[0].size = strToInt(&clientData[0].data[0], ptrData);
+					sizeData = clientData[0].size;
+					ptrData = 0;
+					break;
+				}
+				clientData[0].data[ptrData++] = espByte;
+
+			break;
+			case 3 : // get data
+				if ((clientData[0].size - ptrData) == 1) {
+					//get last byte, and message about new accepted data!!!
+					statusData = 0;	//end accepted data...
+					esp_status |= ESP_STATUS_NEW_DATA0;
+				}
+				clientData[0].data[ptrData++] = espByte;
+				clientData[0].data[ptrData] = 0x00;
+
+			break;
+
+		}
+		return 1;
+	}
+
 	cmd[ptrCmd++] = espByte;
 	cmd[ptrCmd] = 0x00;
 
+
+
 	if (espByte == '\r') {
 		++countCR;
+		statusData = 0;
+	}
+	else if (strCmp(ESP_ANS_NEW_DATA, cmd) == 0) {	//wait new data came...
+		++ptrData;
+		statusData = 1;
 	}
 	else if (espByte == '\n' && countCR > 0) {
 		if (strCmp(ESP_ANS_RESET, cmd) == 0) {
@@ -253,6 +272,9 @@ uint8_t esp_processData(uint8_t doit) {
 			ESP_LED(LED_STATUS_ON);
 		}
 		else if (strCmp(ESP_ANS_FAIL, cmd) == 0) {
+			ESP_ERR_LED();
+		}
+		else if (strCmp(ESP_ANS_ERROR, cmd) == 0) {
 			ESP_ERR_LED();
 		}
 		else if (strCmp(ESP_ANS_DISCONNECT, cmd) == 0) {
@@ -279,8 +301,22 @@ uint8_t esp_processData(uint8_t doit) {
 		else if (strCmp(ESP_ANS_BUSY, cmd) == 0) {
 			esp_status |= ESP_STATUS_BUSY;
 		}
-
-
+		else if (strCmp(ESP_ANS_CIPMUX, cmd) == 0) {
+			cmd_ok[cmd_multConn] = 0;
+		}
+		else if (cmd[0] >= '0' && cmd[0] <= '4') {
+			// it's may be connected new user... or disconnected
+			if (strCmp(ESP_ANS_USER_CONNECTED, &cmd[2]) == 0) {
+				//new user connected
+				connectedUser |= 1 << (cmd[0] - 0x30);
+				ESP_LED_USER_CONN();
+			}
+			if (strCmp(ESP_ANS_USER_DISCONNECTED, &cmd[2]) == 0) {
+				//user disconnected
+				connectedUser &= ~(1 << (cmd[0] - 0x30));
+				ESP_LED_USER_DISCON();
+			}
+		}
 
 		ptrCmd = 0;
 		countCR = 0;
