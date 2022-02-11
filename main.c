@@ -49,6 +49,13 @@ int res[3] = {0,0,0};
 extern uint8_t cmd_ok[COUNT_NUM_CMD];
 extern struct DataFromClient clientData[2];
 
+uint8_t send_data = 0;
+
+void TIM6_DAC_IRQHandler() {
+	TIM6->SR &= ~TIM_SR_UIF;
+	send_data = 1;
+}
+
 void work_esp() {
 	esp_processData(PD_DOIT_NORMAL);
 	if ((esp_getStatus() & ESP_STATUS_CONNECTED) != ESP_STATUS_CONNECTED) {
@@ -57,33 +64,47 @@ void work_esp() {
 	}
 
 	if ((esp_getStatus() & ESP_STATUS_NEW_DATA0) == ESP_STATUS_NEW_DATA0) {
-		if (strCmp(clientData[0].data, "blink\0") == 0) {
+		if (strCmp(clientData[0].data, (uint8_t*)"blink\0") == 0) {
 			GPIOC->ODR ^= GPIO_ODR_9;
 
 		}
 
 		esp_DataProcessed();	//don't forget reset the information about processed data!!
 	}
+
+	if (send_data) {
+		send_data = 0;
+		esp_sendToClinetData(0, (uint8_t*)"test", 4);
+	}
+}
+
+void init_tim6() {
+	RCC->APB1ENR |= RCC_APB1ENR_TIM6EN;
+	TIM6->ARR = 8000;
+	TIM6->PSC = 2000;
+	TIM6->DIER |= TIM_DIER_UIE;
+	NVIC_EnableIRQ(TIM6_DAC_IRQn);
+	NVIC_SetPriority(TIM6_DAC_IRQn, 9);
 }
 
 int main(void)
 {
+	init_tim6();
 	esp_init();
 	esp_reset();
 
-	while(esp_SetWiFiMode(ESP_MODE3) == ESP_ERROR_CMD_BAD) {
-		count++;
-	}
+//	while (esp_connect("AndroidAP901B\0", "effi6715\0") == ESP_ERROR_CMD_BAD) { }
 	while(esp_connect((uint8_t*)("lifeisgood\0"),(uint8_t*)("qpwoeiruty!--\0")) == ESP_ERROR_CMD_BAD) {
 		count++;
 	}
 
-
-//	while (esp_connect("AndroidAP901B\0", "effi6715\0") == ESP_ERROR_CMD_BAD) { }
-	while (esp_getIp() == ESP_ERROR_CMD_BAD) {
+	while(esp_SetWiFiMode(ESP_MODE3) == ESP_ERROR_CMD_BAD) {
 		count++;
 	}
 
+	while (esp_getIp() == ESP_ERROR_CMD_BAD) {
+		count++;
+	}
 
 	while(esp_createServer(30000) == ESP_ERROR_CMD_BAD) {
 		count++;
@@ -92,6 +113,9 @@ int main(void)
 	while(esp_setTimeout(180) == ESP_ERROR_CMD_BAD) {
 		count++;
 	}
+
+
+	TIM6->CR1 |= TIM_CR1_CEN;
 
 	/* Infinite loop */
 	while (1)

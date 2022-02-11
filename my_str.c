@@ -51,7 +51,7 @@ uint8_t Str1inStr2(uint8_t* str1, uint8_t* str2) {
 }
 
 
-uint8_t intToStr(uint16_t num, char* numStr) {
+uint8_t intToStr(uint16_t num, uint8_t* numStr) {
 	numStr[0] = num / 10000 + 0x30;
 	num -= (num/10000) * 10000;
 

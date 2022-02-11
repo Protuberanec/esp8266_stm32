@@ -13,7 +13,7 @@
 #include "usart.h"
 #include "my_str.h"
 
-#define COUNT_NUM_CMD	11
+#define COUNT_NUM_CMD	12
 enum NUM_CMD {
 	no_cmd = 0,
 	cmd_reset = 1,
@@ -21,11 +21,12 @@ enum NUM_CMD {
 	cmd_connect,
 	cmd_disconnect,
 	cmd_isConnected,
-	cmd_getIP,
+	cmd_getIP,	//6
 	cmd_multConn,
 	cmd_createServer,
 	cmd_cipsto,
 	cmd_sendex,
+	cmd_data_send_ok,	//11
 };
 
 #define ESP_CMD_RESET		((uint8_t*)"AT+RST\r\n\0")
@@ -40,7 +41,7 @@ enum NUM_CMD {
 #define ESP_CMD_CIPSTO		((uint8_t*)"AT+CIPSTO=1800\r\n")
 #define ESP_ANS_CIPSTO		((uint8_t*)"AT+CIPSTO=1800\r\r\n")
 #define ESP_CMD_CIPSENDEX	((uint8_t*)"AT+CIPSENDEX=\0")
-#define ESP_ANS_CIPSENDEX	((uint8_t*)"AT+CIPSENDEX=....\r\n")	//need add id and len
+#define ESP_ANS_CIPSENDEX	((uint8_t*)"AT+CIPSENDEX=\0")	//need add id and len
 #define ESP_ANS_SEND_OK		((uint8_t*)"SEND OK\r\n")	//when data is fine going out...
 
 
@@ -86,6 +87,9 @@ enum NUM_CMD {
 #define ESP_ERROR_CMD_BUSY	2
 #define ESP_ERROR_NO_CLIENT	3
 
+#define ESP_DATA_SEND_OK	1
+#define ESP_DATA_SEND_NO	0
+
 struct DataFromClient {
 	uint8_t id_client;
 	uint8_t data[64];
@@ -108,7 +112,8 @@ uint8_t esp_setMultConn();
 uint8_t esp_createServer(uint16_t port);
 uint8_t esp_setTimeout(uint16_t sec);
 
-uint8_t esp_sendToClinetData(uint8_t id, const uint8_t* data, uint8_t size);
+uint8_t esp_sendToClinetData(uint8_t id, const uint8_t* data, uint16_t size);
+uint8_t esp_isSendData();
 
 
 

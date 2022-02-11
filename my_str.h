@@ -14,7 +14,7 @@ uint16_t sizeStr(const uint8_t* str);
 uint8_t strCmp(uint8_t* str1, uint8_t* str2);
 void strnCpy(uint8_t* source, uint8_t* dst, uint8_t startPos, uint8_t size);
 uint8_t Str1inStr2(uint8_t* str1, uint8_t* str2);
-uint8_t intToStr(uint16_t num, char* numStr);
+uint8_t intToStr(uint16_t num, uint8_t* numStr);
 uint16_t strToInt(const uint8_t* str, uint8_t size);
 
 

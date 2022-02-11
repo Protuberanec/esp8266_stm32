@@ -21,8 +21,6 @@ void TIM17_IRQHandler() {
 	ESP_LED_TOGGLE();
 }
 
-
-
 uint8_t checkStatusCmd(uint8_t numCmd) {
 	uint16_t temp = 0;
 	while(!cmd_ok[curCMD]) {
@@ -31,7 +29,7 @@ uint8_t checkStatusCmd(uint8_t numCmd) {
 			for (int i = 0; i < 50000; i++);
 			return ESP_ERROR_CMD_BAD;
 		}
-		if (temp > 20000) {
+		if (temp > 60000) {
 			return ESP_ERROR_CMD_BAD;	//answer is not coming
 		}
 	}
@@ -43,6 +41,7 @@ void esp_init() {
 	esp_indication();
 	esp_timerIndication();
 	USART2_Init();
+	cmd_ok[cmd_data_send_ok] = 1;
 }
 
 void esp_indication() {
@@ -171,17 +170,44 @@ uint8_t esp_setTimeout(uint16_t sec) {
 	return checkStatusCmd(curCMD);
 }
 
-uint8_t esp_sendToClinetData(uint8_t id, const uint8_t* data, uint8_t size) {
-	curCMD = cmd_sendex;
-	esp_status &= ~ESP_STATUS_BUSY;
+/*	input		:
+ * 	output		:
+ * 	description	:	after call this function, need call esp_isSendData() to check data is out...
+ */
+uint8_t esp_sendToClinetData(uint8_t id, const uint8_t* data, uint16_t size) {
 	if (!(connectedUser & (1 << id))) {
+		curCMD = no_cmd;
 		return ESP_ERROR_NO_CLIENT;
 	}
 
-//	ESP_CMD_CIPSENDEX
-	//AT+CIPSENDEX=id,len
-	//
+	cmd_ok[cmd_data_send_ok] = 0;	//reset data
+	cmd_ok[cmd_sendex] = 0;
+	curCMD = cmd_sendex;
+	esp_status &= ~ESP_STATUS_BUSY;
 
+	USART_PutString(ESP_CMD_CIPSENDEX, sizeStr(ESP_CMD_CIPSENDEX));
+	USART_PutCharToBuff(id + 0x30);
+	USART_PutCharToBuff(',');
+	uint8_t strNum[6];
+	intToStr(size, &strNum[0]);
+	USART_PutString(strNum, sizeStr(strNum));
+	USART_PutString((uint8_t*)"\r\n", 2);
+	USART_SendDataFromBuffer();
+
+	if (checkStatusCmd(curCMD) == ESP_ERROR_CMD_OK) {
+		curCMD = cmd_data_send_ok;
+		USART_PutString(data, size);
+		USART_SendDataFromBuffer();
+		return 0;
+	}
+	cmd_ok[cmd_data_send_ok] = 1;	//reset data
+
+	return 1;
+}
+
+
+uint8_t esp_isSendData() {
+	return cmd_ok[cmd_data_send_ok];
 }
 
 uint8_t esp_processData(uint8_t doit) {
@@ -266,6 +292,9 @@ uint8_t esp_processData(uint8_t doit) {
 			ESP_LED(LED_STATUS_OFF);
 			//timer is off....
 		}
+		else if (strCmp(ESP_ANS_SEND_OK, cmd) == 0) {
+			cmd_ok[cmd_data_send_ok] = 1;
+		}
 		else if (strCmp(ESP_ANS_OK, cmd) == 0) {
 			cmd_ok[curCMD] = 1;
 			ESP_OK_LED();
@@ -309,11 +338,13 @@ uint8_t esp_processData(uint8_t doit) {
 			if (strCmp(ESP_ANS_USER_CONNECTED, &cmd[2]) == 0) {
 				//new user connected
 				connectedUser |= 1 << (cmd[0] - 0x30);
+				cmd_ok[cmd_data_send_ok] = 1;	//ready to send new data...
 				ESP_LED_USER_CONN();
 			}
 			if (strCmp(ESP_ANS_USER_DISCONNECTED, &cmd[2]) == 0) {
 				//user disconnected
 				connectedUser &= ~(1 << (cmd[0] - 0x30));
+				cmd_ok[cmd_data_send_ok] = 0; //reset possibility to send data
 				ESP_LED_USER_DISCON();
 			}
 		}
