@@ -51,16 +51,115 @@ extern struct DataFromClient clientData[2];
 
 uint8_t send_data = 0;
 
+struct InfoCooler {
+	uint16_t last_water;          // сколько воды осталось (объем)
+	uint32_t time_from_last_req;  // время с последней замены
+	uint8_t status_work;          // есть бутыль 1 / нет бутыли 0
+	uint8_t count_bottle;         // количество бутылей
+	uint16_t count_cups;          // количество стаканчиков
+	uint32_t date_replace;        // время с последнего запроса
+	uint32_t time_no_water;       // время простоя
+}infoCool;
+
+int per1;
+int per0;
+
+
 void TIM6_DAC_IRQHandler() {
 	TIM6->SR &= ~TIM_SR_UIF;
 	send_data = 1;
 }
 
-void work_esp() {
+
+void EXTI4_15_IRQHandler(){
+	if ((EXTI->PR & EXTI_PR_PR6) == EXTI_PR_PR6)
+	{
+
+		EXTI->PR |= EXTI_PR_PR6;
+		if ((GPIOA->IDR & GPIO_IDR_6) == GPIO_IDR_6){
+			per1 = TIM14->CNT;
+		}
+		else{
+			per0 = TIM14->CNT;
+		}
+		TIM14->CNT = 0;
+	}
+	if ((EXTI->PR & EXTI_PR_PR4) == EXTI_PR_PR4) // на кулер
+	{
+
+		EXTI->PR |= EXTI_PR_PR4;
+		if ((GPIOA->IDR & GPIO_IDR_4) == GPIO_IDR_4){
+			infoCool.status_work = 1;
+			infoCool.count_bottle ++;
+			infoCool.time_from_last_req = TIM3->CNT;
+		}
+		else{
+			infoCool.status_work = 0;
+			infoCool.time_no_water = TIM3->CNT;
+		}
+		TIM3->CNT = 0;
+	}
+	if ((EXTI->PR & EXTI_PR_PR5) == EXTI_PR_PR5) // на стаканчики
+	{
+
+		EXTI->PR |= EXTI_PR_PR5;
+		if ((GPIOA->IDR & GPIO_IDR_5) != GPIO_IDR_5){
+			infoCool.count_cups++;
+		}
+
+	}
+}
+
+void init_timer14(){
+	RCC->APB1ENR |= RCC_APB1ENR_TIM14EN;
+	TIM14->ARR = 65535;
+	TIM14->PSC = 4;
+	TIM14->CR1 |= TIM_CR1_CEN;
+}
+
+void init_timer3(){
+	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+	TIM3->ARR = 8000;
+	TIM3->PSC = 1000;
+	TIM3->CR1 |= TIM_CR1_CEN;
+}
+
+void initExti(){
+	RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+	GPIOA->PUPDR |= GPIO_PUPDR_PUPDR6_0 | GPIO_PUPDR_PUPDR4_0 | GPIO_PUPDR_PUPDR5_0;
+	EXTI->IMR |= EXTI_IMR_IM6 | EXTI_IMR_IM5 | EXTI_IMR_IM4;
+	EXTI->EMR |= EXTI_EMR_EM6 | EXTI_EMR_EM5 | EXTI_EMR_EM4;
+	EXTI->RTSR |= EXTI_RTSR_RT6 | EXTI_RTSR_RT5 | EXTI_RTSR_RT4;
+	EXTI->FTSR |= EXTI_FTSR_FT6 | EXTI_FTSR_FT5 | EXTI_FTSR_FT4;
+	NVIC_SetPriority(EXTI4_15_IRQn,0);
+	NVIC_EnableIRQ(EXTI4_15_IRQn);
+}
+
+
+void convert(char * convertnum, int num){
+	int a = num / 100000;
+	convertnum[0] = a + 0x30;
+	num = num - (a * 100000);
+	a = num / 10000;
+	convertnum[1] = a + 0x30;
+	num = num - (a * 10000);
+	a = num / 1000;
+	convertnum[2] = a + 0x30;
+	num = num - (a * 1000);
+	a = num / 100;
+	convertnum[3] = a + 0x30;
+	num = num - (a * 100);
+	a = num / 10;
+	convertnum[4] = a + 0x30;
+	num = num - (a * 10);
+	convertnum[5] = num + 0x30;
+}
+
+uint8_t work_esp(uint8_t* data, uint8_t size) {
 	esp_processData(PD_DOIT_NORMAL);
 	if ((esp_getStatus() & ESP_STATUS_CONNECTED) != ESP_STATUS_CONNECTED) {
 		//I think need to stop work!!!
-		return;
+		return 0;
 	}
 
 	if ((esp_getStatus() & ESP_STATUS_NEW_DATA0) == ESP_STATUS_NEW_DATA0) {
@@ -74,14 +173,16 @@ void work_esp() {
 
 	if (send_data) {
 		send_data = 0;
-		esp_sendToClinetData(0, (uint8_t*)"test", 4);
+		esp_sendToClinetData(0, data, size);
+		return size;
 	}
+	return 0;
 }
 
 void init_tim6() {
 	RCC->APB1ENR |= RCC_APB1ENR_TIM6EN;
 	TIM6->ARR = 8000;
-	TIM6->PSC = 2000;
+	TIM6->PSC = 500;
 	TIM6->DIER |= TIM_DIER_UIE;
 	NVIC_EnableIRQ(TIM6_DAC_IRQn);
 	NVIC_SetPriority(TIM6_DAC_IRQn, 9);
@@ -93,34 +194,55 @@ int main(void)
 	esp_init();
 	esp_reset();
 
+	uint8_t status = ESP_ERROR_CMD_OK;
+
+	for (int i = 0; i < 1000000; i++);
+
 //	while (esp_connect("AndroidAP901B\0", "effi6715\0") == ESP_ERROR_CMD_BAD) { }
+
 	while(esp_connect((uint8_t*)("lifeisgood\0"),(uint8_t*)("qpwoeiruty!--\0")) == ESP_ERROR_CMD_BAD) {
+//		for (int i = 0; i < 3000000; i++);
+//		count++;
+	}
+
+	do {
+		status = esp_SetWiFiMode(ESP_MODE3);
+		if (status == ESP_ERROR_CMD_BUSY) {
+			for (int i = 0; i < 1000000; i++);
+			continue;
+		}
+	}
+	while(status != ESP_ERROR_CMD_OK);
+
+	do {
+		status = esp_getIp();
+	}
+	while (status != ESP_ERROR_CMD_OK);
+
+	while(esp_createServer(30000) != ESP_ERROR_CMD_OK) {
 		count++;
 	}
 
-	while(esp_SetWiFiMode(ESP_MODE3) == ESP_ERROR_CMD_BAD) {
-		count++;
-	}
-
-	while (esp_getIp() == ESP_ERROR_CMD_BAD) {
-		count++;
-	}
-
-	while(esp_createServer(30000) == ESP_ERROR_CMD_BAD) {
-		count++;
-	}
-
-	while(esp_setTimeout(180) == ESP_ERROR_CMD_BAD) {
+	while(esp_setTimeout(180) != ESP_ERROR_CMD_OK) {
 		count++;
 	}
 
 
 	TIM6->CR1 |= TIM_CR1_CEN;
 
+	initExti();
+	init_timer14();
+	init_timer3();
+	char package[] = "st00=000000;V000=000000;P000=000000;Tnw0=000000;Tcw0=000000;Tlr0=000000;Cb00=000000;\0";
+	convert(&package[17], 235746);
+
 	/* Infinite loop */
+	uint16_t temp_count = 1;;
 	while (1)
 	{
-		work_esp();
+		if (work_esp(package, 85)) {
+			convert(&package[17], temp_count++);
+		}
 	}
 }
 

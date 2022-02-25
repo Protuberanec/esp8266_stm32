@@ -33,8 +33,6 @@ AT+CIPSEND=4
 init mDNS
 	AT+MDNS=1,"myTest","iot",30000
 
-
-
 Как AP
 	AT+CWMODE=1 (1 - SM, 2 - AP, 3 - AP,SM)
 	AT+RST

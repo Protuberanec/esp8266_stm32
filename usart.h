@@ -8,6 +8,8 @@
 #define	SIZE_BUF_RX	1024
 
 
+void USART1_init();
+void USART1_sendData(uint8_t data);
 
 void USART2_Init();
 uint8_t USART_GetData(void);

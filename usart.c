@@ -9,6 +9,7 @@ static uint8_t data_rx[SIZE_BUF_RX];
 void USART2_IRQHandler() {
 	if ((USART2->ISR & USART_ISR_RXNE) == USART_ISR_RXNE) {
 		uint8_t temp_data = (uint16_t)(USART2->RDR & 0x1FF);
+		USART1_sendData(temp_data);
 		bufferAddToEnd(&buffer_rx, temp_data);
 	}
 
@@ -21,6 +22,21 @@ void USART2_IRQHandler() {
 	}
 }
 
+void USART1_init() {
+	RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+	GPIOA->MODER |= GPIO_MODER_MODER9_1;
+	GPIOA->AFR[1] |= 1 << 4;
+
+	RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
+	USART1->CR1 |= USART_CR1_TE;	//transmit and received enabled
+	USART1->BRR = SystemCoreClock / 256000;
+	USART1->CR3 |= USART_CR3_OVRDIS;
+	USART1->CR1 |= USART_CR1_UE;	//enable usart
+}
+
+void USART1_sendData(uint8_t data) {
+	USART1->TDR = data;
+}
 
 void USART2_Init() {
 	bufferInit(&buffer_tx, &data_tx[0], SIZE_BUF_TX);
@@ -42,6 +58,8 @@ void USART2_Init() {
 
 	USART2->CR1 |= USART_CR1_UE;	//enable usart
 	__enable_irq();
+
+	USART1_init();
 }
 
 /*function to get data from the usart and put data to buffer*/

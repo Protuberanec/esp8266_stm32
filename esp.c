@@ -26,8 +26,7 @@ uint8_t checkStatusCmd(uint8_t numCmd) {
 	while(!cmd_ok[curCMD]) {
 		temp += 1 - esp_processData(PD_DOIT_NORMAL);
 		if ((esp_getStatus() & ESP_STATUS_BUSY) == ESP_STATUS_BUSY) {
-			for (int i = 0; i < 50000; i++);
-			return ESP_ERROR_CMD_BAD;
+			return ESP_ERROR_CMD_BUSY;
 		}
 		if (temp > 60000) {
 			return ESP_ERROR_CMD_BAD;	//answer is not coming
@@ -93,9 +92,14 @@ uint8_t esp_connect(const uint8_t* ssid_name, const uint8_t* ssid_pass) {
 	USART_PutString("\"\r\n", 3);
 	USART_SendDataFromBuffer();
 
-	for (int i = 0; i < 150000; i++);	//wait while not connected....
+	uint32_t count = 0;
+	uint8_t status = 0;
+	do {
+		status = checkStatusCmd(curCMD);
+		count++;
+	}while(status != ESP_ERROR_CMD_OK || count > 10000000);
 
-	return checkStatusCmd(curCMD);
+	return status;
 }
 
 uint8_t esp_SetWiFiMode(const uint8_t* mode) {
@@ -190,7 +194,7 @@ uint8_t esp_sendToClinetData(uint8_t id, const uint8_t* data, uint16_t size) {
 	USART_PutCharToBuff(',');
 	uint8_t strNum[6];
 	intToStr(size, &strNum[0]);
-	USART_PutString(strNum, sizeStr(strNum));
+	USART_PutString(&strNum[0], 5);
 	USART_PutString((uint8_t*)"\r\n", 2);
 	USART_SendDataFromBuffer();
 
@@ -301,12 +305,15 @@ uint8_t esp_processData(uint8_t doit) {
 			ESP_LED(LED_STATUS_ON);
 		}
 		else if (strCmp(ESP_ANS_FAIL, cmd) == 0) {
+			TIM17->ARR = 1000;
 			ESP_ERR_LED();
 		}
 		else if (strCmp(ESP_ANS_ERROR, cmd) == 0) {
+			TIM17->ARR = 500;
 			ESP_ERR_LED();
 		}
 		else if (strCmp(ESP_ANS_DISCONNECT, cmd) == 0) {
+			TIM17->ARR = 2000;
 			ESP_ERR_LED();
 			esp_status &= ~ESP_STATUS_CONNECTED;
 		}
@@ -329,6 +336,7 @@ uint8_t esp_processData(uint8_t doit) {
 		}
 		else if (strCmp(ESP_ANS_BUSY, cmd) == 0) {
 			esp_status |= ESP_STATUS_BUSY;
+			curCMD = 0;
 		}
 		else if (strCmp(ESP_ANS_CIPMUX, cmd) == 0) {
 			cmd_ok[cmd_multConn] = 0;

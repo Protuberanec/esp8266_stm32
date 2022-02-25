@@ -34,15 +34,15 @@ enum NUM_CMD {
 #define ESP_ANS_MODE		((uint8_t*)"AT+CWMODE=3\r\r\n\0")
 #define ESP_CMD_CONNECT		((uint8_t*)"AT+CWJAP=\0")
 #define ESP_CMD_isCONNECTED	((uint8_t*)"AT+CWJAP?\0")
-#define ESP_ANS_CONNECT		((uint8_t*)"AT+CWJAP=\0....\r\r\n")
-#define ESP_CMD_CIPMUX		((uint8_t*)"AT+CIPMUX=1\r\n")
-#define ESP_ANS_CIPMUX		((uint8_t*)"AT+CIPMUX=1\r\r\n")
-#define ESP_CMD_CONF_TCP_SERV	((uint8_t*)"AT+CIPSERVER=1,30000\r\n")	//need add a tcp port
-#define ESP_CMD_CIPSTO		((uint8_t*)"AT+CIPSTO=1800\r\n")
-#define ESP_ANS_CIPSTO		((uint8_t*)"AT+CIPSTO=1800\r\r\n")
+#define ESP_ANS_CONNECT		((uint8_t*)"AT+CWJAP=\0....\r\r\n\0")
+#define ESP_CMD_CIPMUX		((uint8_t*)"AT+CIPMUX=1\r\n\0")
+#define ESP_ANS_CIPMUX		((uint8_t*)"AT+CIPMUX=1\r\r\n\0")
+#define ESP_CMD_CONF_TCP_SERV	((uint8_t*)"AT+CIPSERVER=1,30000\r\n\0")	//need add a tcp port
+#define ESP_CMD_CIPSTO		((uint8_t*)"AT+CIPSTO=1800\r\n\0")
+#define ESP_ANS_CIPSTO		((uint8_t*)"AT+CIPSTO=1800\r\r\n\0")
 #define ESP_CMD_CIPSENDEX	((uint8_t*)"AT+CIPSENDEX=\0")
 #define ESP_ANS_CIPSENDEX	((uint8_t*)"AT+CIPSENDEX=\0")	//need add id and len
-#define ESP_ANS_SEND_OK		((uint8_t*)"SEND OK\r\n")	//when data is fine going out...
+#define ESP_ANS_SEND_OK		((uint8_t*)"SEND OK\r\n\0")	//when data is fine going out...
 
 
 #define ESP_CMD_DISCONNECT	((uint8_t*)"AT+CWQAP=\0")
@@ -58,7 +58,7 @@ enum NUM_CMD {
 #define ESP_ANS_GETIP		((uint8_t*)"AT+CIPSTA?\r\r\n\0")
 #define ESP_ANS_IP			((uint8_t*)"+CIPSTA:ip:\0")
 #define ESP_ANS_BUSY		((uint8_t*)"busy p...\r\n\0")
-#define ESP_ANS_BUSY_SEND	((uint8_t*)"busy s...\r\n")	//while send data
+#define ESP_ANS_BUSY_SEND	((uint8_t*)"busy s...\r\n\0")	//while send data
 #define ESP_ANS_USER_CONNECTED	((uint8_t*)"CONNECT\r\n")
 #define ESP_ANS_USER_DISCONNECTED	((uint8_t*)"CLOSED\r\n")
 #define ESP_ANS_NEW_DATA	((uint8_t*)"+IPD,")
