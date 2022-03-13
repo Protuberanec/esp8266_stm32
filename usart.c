@@ -5,11 +5,13 @@ static cBuffer buffer_rx;
 static uint8_t data_tx[SIZE_BUF_TX];
 static uint8_t data_rx[SIZE_BUF_RX];
 
+uint16_t getRxData0 = 0;
 
 void USART2_IRQHandler() {
+
 	if ((USART2->ISR & USART_ISR_RXNE) == USART_ISR_RXNE) {
-		uint8_t temp_data = (uint16_t)(USART2->RDR & 0x1FF);
-		USART1_sendData(temp_data);
+		uint8_t temp_data = USART2->RDR;
+//		USART1_sendData(temp_data);
 		bufferAddToEnd(&buffer_rx, temp_data);
 	}
 
@@ -18,7 +20,8 @@ void USART2_IRQHandler() {
 			USART2->CR1 &= ~USART_CR1_TXEIE;
 			return;
 		}
-		USART2->TDR = bufferGetFromFront(&buffer_tx);
+		uint8_t temp_tx = bufferGetFromFront(&buffer_tx);
+		USART2->TDR = temp_tx;
 	}
 }
 

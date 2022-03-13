@@ -26,9 +26,10 @@ uint8_t checkStatusCmd(uint8_t numCmd) {
 	while(!cmd_ok[curCMD]) {
 		temp += 1 - esp_processData(PD_DOIT_NORMAL);
 		if ((esp_getStatus() & ESP_STATUS_BUSY) == ESP_STATUS_BUSY) {
+			for (uint16_t i = 0; i < 50000; i++);
 			return ESP_ERROR_CMD_BUSY;
 		}
-		if (temp > 60000) {
+		if (temp > 30000) {
 			return ESP_ERROR_CMD_BAD;	//answer is not coming
 		}
 	}
@@ -96,6 +97,8 @@ uint8_t esp_connect(const uint8_t* ssid_name, const uint8_t* ssid_pass) {
 	uint8_t status = 0;
 	do {
 		status = checkStatusCmd(curCMD);
+		if (status == ESP_ERROR_CMD_BAD)
+			break;
 		count++;
 	}while(status != ESP_ERROR_CMD_OK || count > 10000000);
 
@@ -216,15 +219,15 @@ uint8_t esp_isSendData() {
 
 uint8_t esp_processData(uint8_t doit) {
 	uint8_t espByte;
-
 	if (ProcessBuffer(&espByte) == 0) {
-		return 0;
+		return ESP_PARSE_NO_DATA;	//no data in buffer
 	}
+
+	USART1_sendData(espByte);
 
 	static uint8_t ptrCmd = 0;
 	static uint8_t cmd[64] = {0};
-	static uint8_t ptrData = 0;
-	static uint8_t sizeData = 0;
+	static uint16_t ptrData = 0;
 	static uint8_t countCR = 0;	//var for count \r, when answer on cmd it's must be 2
 	static uint8_t statusData = 0;
 
@@ -253,8 +256,11 @@ uint8_t esp_processData(uint8_t doit) {
 			case 2 : //get size data
 				if (espByte == ':') {
 					++statusData;
-					clientData[0].size = strToInt(&clientData[0].data[0], ptrData);
-					sizeData = clientData[0].size;
+					clientData[0].size = strToInt((const uint8_t*)&clientData[0].data[0], ptrData);
+					if (clientData[0].size < 0) {
+						statusData = 0;
+						return ESP_PARSE_BAD_DATA;
+					}
 					ptrData = 0;
 					break;
 				}
@@ -262,32 +268,32 @@ uint8_t esp_processData(uint8_t doit) {
 
 			break;
 			case 3 : // get data
-				if ((clientData[0].size - ptrData) == 1) {
+				clientData[0].data[ptrData++] = espByte;
+				clientData[0].data[ptrData] = 0x00;
+				if (ptrData > clientData[0].size-1) {
 					//get last byte, and message about new accepted data!!!
 					statusData = 0;	//end accepted data...
 					esp_status |= ESP_STATUS_NEW_DATA0;
+					ptrCmd = 0;
 				}
-				clientData[0].data[ptrData++] = espByte;
-				clientData[0].data[ptrData] = 0x00;
 
 			break;
-
 		}
-		return 1;
+		return ESP_PARSE_CONT_DATA;
 	}
 
 	cmd[ptrCmd++] = espByte;
 	cmd[ptrCmd] = 0x00;
 
-
-
 	if (espByte == '\r') {
 		++countCR;
 		statusData = 0;
 	}
-	else if (strCmp(ESP_ANS_NEW_DATA, cmd) == 0) {	//wait new data came...
-		++ptrData;
+	else if (strCmp(ESP_ANS_NEW_DATA, cmd) == 0) {	//wait new data came... +IPD,
+		countCR = 0;
 		statusData = 1;
+		ESP_LED_TOGGLE();
+		ptrCmd = 0;
 	}
 	else if (espByte == '\n' && countCR > 0) {
 		if (strCmp(ESP_ANS_RESET, cmd) == 0) {
@@ -303,6 +309,13 @@ uint8_t esp_processData(uint8_t doit) {
 			cmd_ok[curCMD] = 1;
 			ESP_OK_LED();
 			ESP_LED(LED_STATUS_ON);
+		}
+		else if (strCmp(ESP_ANS_SEND_OK, cmd) == 0) {
+//data was send... ok!!!
+		}
+		else if (strCmp(ESP_ANS_SEND_FAIL, cmd) == 0) {
+		//data was NOT send...
+			//resend???
 		}
 		else if (strCmp(ESP_ANS_FAIL, cmd) == 0) {
 			TIM17->ARR = 1000;
@@ -356,7 +369,6 @@ uint8_t esp_processData(uint8_t doit) {
 				ESP_LED_USER_DISCON();
 			}
 		}
-
 		ptrCmd = 0;
 		countCR = 0;
 	}
@@ -366,9 +378,7 @@ uint8_t esp_processData(uint8_t doit) {
 	}
 //	cmd[ptrCmd++] = espByte;
 
-
-	return 1;
-
+	return ESP_PARSE_CONT_CMD;
 }
 
 

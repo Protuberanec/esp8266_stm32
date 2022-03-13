@@ -29,39 +29,41 @@ enum NUM_CMD {
 	cmd_data_send_ok,	//11
 };
 
-#define ESP_CMD_RESET		((uint8_t*)"AT+RST\r\n\0")
-#define ESP_CMD_MODE		((uint8_t*)"AT+CWMODE=\0")
-#define ESP_ANS_MODE		((uint8_t*)"AT+CWMODE=3\r\r\n\0")
-#define ESP_CMD_CONNECT		((uint8_t*)"AT+CWJAP=\0")
-#define ESP_CMD_isCONNECTED	((uint8_t*)"AT+CWJAP?\0")
-#define ESP_ANS_CONNECT		((uint8_t*)"AT+CWJAP=\0....\r\r\n\0")
-#define ESP_CMD_CIPMUX		((uint8_t*)"AT+CIPMUX=1\r\n\0")
-#define ESP_ANS_CIPMUX		((uint8_t*)"AT+CIPMUX=1\r\r\n\0")
-#define ESP_CMD_CONF_TCP_SERV	((uint8_t*)"AT+CIPSERVER=1,30000\r\n\0")	//need add a tcp port
-#define ESP_CMD_CIPSTO		((uint8_t*)"AT+CIPSTO=1800\r\n\0")
-#define ESP_ANS_CIPSTO		((uint8_t*)"AT+CIPSTO=1800\r\r\n\0")
-#define ESP_CMD_CIPSENDEX	((uint8_t*)"AT+CIPSENDEX=\0")
-#define ESP_ANS_CIPSENDEX	((uint8_t*)"AT+CIPSENDEX=\0")	//need add id and len
-#define ESP_ANS_SEND_OK		((uint8_t*)"SEND OK\r\n\0")	//when data is fine going out...
+#define ESP_CMD_RESET		((const uint8_t*)"AT+RST\r\n\0")
+#define ESP_CMD_MODE		((const uint8_t*)"AT+CWMODE=\0")
+#define ESP_ANS_MODE		((const uint8_t*)"AT+CWMODE=3\r\r\n\0")
+#define ESP_CMD_CONNECT		((const uint8_t*)"AT+CWJAP=\0")
+#define ESP_CMD_isCONNECTED	((const uint8_t*)"AT+CWJAP?\0")
+#define ESP_ANS_CONNECT		((const uint8_t*)"AT+CWJAP=\0....\r\r\n\0")
+#define ESP_CMD_CIPMUX		((const uint8_t*)"AT+CIPMUX=1\r\n\0")
+#define ESP_ANS_CIPMUX		((const uint8_t*)"AT+CIPMUX=1\r\r\n\0")
+#define ESP_CMD_CONF_TCP_SERV	((const uint8_t*)"AT+CIPSERVER=1,30000\r\n\0")	//need add a tcp port
+#define ESP_CMD_CIPSTO		((const uint8_t*)"AT+CIPSTO=1800\r\n\0")
+#define ESP_ANS_CIPSTO		((const uint8_t*)"AT+CIPSTO=1800\r\r\n\0")
+#define ESP_CMD_CIPSENDEX	((const uint8_t*)"AT+CIPSENDEX=\0")
+#define ESP_ANS_CIPSENDEX	((const uint8_t*)"AT+CIPSENDEX=\0")	//need add id and len
+#define ESP_ANS_SEND_OK		((const uint8_t*)"SEND OK\r\n\0")	//when data is fine going out...
 
+#define ESP_CMD_DISCONNECT	((const uint8_t*)"AT+CWQAP=\0")
+#define ESP_CMD_GET_ST_CONN	((const uint8_t*)"AT+CWJAP?\r\n\0")
+#define ESP_CMD_GETIP		((const uint8_t*)"AT+CIPSTA?\r\n\0")
 
-#define ESP_CMD_DISCONNECT	((uint8_t*)"AT+CWQAP=\0")
-#define ESP_CMD_GET_ST_CONN	((uint8_t*)"AT+CWJAP?\r\n\0")
-#define ESP_CMD_GETIP		((uint8_t*)"AT+CIPSTA?\r\n\0")
+#define ESP_ANS_OK			((const uint8_t*)"OK\r\n")
+#define ESP_ANS_FAIL		((const uint8_t*)"FAIL\r\n")
+#define ESP_ANS_ERROR		((const uint8_t*)"ERROR\r\n")
+#define ESP_ANS_RESET		((const uint8_t*)"AT+RST\r\r\n\0")
+#define ESP_ANS_DISCONNECT	((const uint8_t*)"WIFI DISCONNECT\r\n")
+#define ESP_ANS_GOT_IP		((const uint8_t*)"WIFI GOT IP\r\n")
+#define ESP_ANS_GETIP		((const uint8_t*)"AT+CIPSTA?\r\r\n\0")
+#define ESP_ANS_IP			((const uint8_t*)"+CIPSTA:ip:\0")
+#define ESP_ANS_BUSY		((const uint8_t*)"busy p...\r\n\0")
+#define ESP_ANS_BUSY_SEND	((const uint8_t*)"busy s...\r\n\0")	//while send data
+#define ESP_ANS_SEND_FAIL	((const uint8_t*)"SEND FAIL\r\n\0")
+#define ESP_ANS_SEND_OK		((const uint8_t*)"SEND OK\r\n\0")
 
-#define ESP_ANS_OK			((uint8_t*)"OK\r\n")
-#define ESP_ANS_FAIL		((uint8_t*)"FAIL\r\n")
-#define ESP_ANS_ERROR		((uint8_t*)"ERROR\r\n")
-#define ESP_ANS_RESET		((uint8_t*)"AT+RST\r\r\n\0")
-#define ESP_ANS_DISCONNECT	((uint8_t*)"WIFI DISCONNECT\r\n")
-#define ESP_ANS_GOT_IP		((uint8_t*)"WIFI GOT IP\r\n")
-#define ESP_ANS_GETIP		((uint8_t*)"AT+CIPSTA?\r\r\n\0")
-#define ESP_ANS_IP			((uint8_t*)"+CIPSTA:ip:\0")
-#define ESP_ANS_BUSY		((uint8_t*)"busy p...\r\n\0")
-#define ESP_ANS_BUSY_SEND	((uint8_t*)"busy s...\r\n\0")	//while send data
 #define ESP_ANS_USER_CONNECTED	((uint8_t*)"CONNECT\r\n")
 #define ESP_ANS_USER_DISCONNECTED	((uint8_t*)"CLOSED\r\n")
-#define ESP_ANS_NEW_DATA	((uint8_t*)"+IPD,")
+#define ESP_ANS_NEW_DATA	((uint8_t*)"+IPD,\0")
 
 #define ESP_MODE1	((uint8_t*)"1\r\n\0")
 #define ESP_MODE2	((uint8_t*)"2\r\n\0")
@@ -89,6 +91,11 @@ enum NUM_CMD {
 
 #define ESP_DATA_SEND_OK	1
 #define ESP_DATA_SEND_NO	0
+
+#define ESP_PARSE_BAD_DATA	-1
+#define ESP_PARSE_NO_DATA	0
+#define ESP_PARSE_CONT_CMD	1
+#define ESP_PARSE_CONT_DATA	2
 
 struct DataFromClient {
 	uint8_t id_client;

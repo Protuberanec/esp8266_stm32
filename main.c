@@ -135,45 +135,29 @@ void initExti(){
 	NVIC_EnableIRQ(EXTI4_15_IRQn);
 }
 
-
-void convert(char * convertnum, int num){
-	int a = num / 100000;
-	convertnum[0] = a + 0x30;
-	num = num - (a * 100000);
-	a = num / 10000;
-	convertnum[1] = a + 0x30;
-	num = num - (a * 10000);
-	a = num / 1000;
-	convertnum[2] = a + 0x30;
-	num = num - (a * 1000);
-	a = num / 100;
-	convertnum[3] = a + 0x30;
-	num = num - (a * 100);
-	a = num / 10;
-	convertnum[4] = a + 0x30;
-	num = num - (a * 10);
-	convertnum[5] = num + 0x30;
-}
-
 uint8_t work_esp(uint8_t* data, uint8_t size) {
 	esp_processData(PD_DOIT_NORMAL);
+
 	if ((esp_getStatus() & ESP_STATUS_CONNECTED) != ESP_STATUS_CONNECTED) {
 		//I think need to stop work!!!
+		send_data = 0;
 		return 0;
 	}
+
 
 	if ((esp_getStatus() & ESP_STATUS_NEW_DATA0) == ESP_STATUS_NEW_DATA0) {
 		if (strCmp(clientData[0].data, (uint8_t*)"blink\0") == 0) {
 			GPIOC->ODR ^= GPIO_ODR_9;
 
 		}
+		esp_sendToClinetData(0, data, size);
 
 		esp_DataProcessed();	//don't forget reset the information about processed data!!
 	}
 
-	if (send_data) {
-		send_data = 0;
-		esp_sendToClinetData(0, data, size);
+	if (!send_data) {
+		send_data = 1;
+		esp_sendToClinetData(0, "you have connected!!!\0", 21);
 		return size;
 	}
 	return 0;
@@ -188,9 +172,28 @@ void init_tim6() {
 	NVIC_SetPriority(TIM6_DAC_IRQn, 9);
 }
 
+void clock48Mhz_init() {
+	RCC->CR &= ~RCC_CR_PLLON;
+	while(RCC->CR & RCC_CR_PLLRDY);
+
+	RCC->CFGR |= RCC_CFGR_PLLMUL12;
+
+	RCC->CR |= RCC_CR_PLLON;
+	while((RCC->CR & RCC_CR_PLLRDY) != RCC_CR_PLLRDY);
+
+	RCC->CFGR |= RCC_CFGR_SW_1;	//as PLL
+
+	for (int i = 0; i < 1000; i++);
+
+	SystemCoreClockUpdate();
+}
+
 int main(void)
 {
-	init_tim6();
+//	init_tim6();
+	clock48Mhz_init();
+
+#ifndef SECOND
 	esp_init();
 	esp_reset();
 
@@ -200,7 +203,7 @@ int main(void)
 
 //	while (esp_connect("AndroidAP901B\0", "effi6715\0") == ESP_ERROR_CMD_BAD) { }
 
-	while(esp_connect((uint8_t*)("lifeisgood\0"),(uint8_t*)("qpwoeiruty!--\0")) == ESP_ERROR_CMD_BAD) {
+	while(esp_connect((uint8_t*)("lifeIsGood\0"),(uint8_t*)("R534l510L4OJionvIxaW\0")) == ESP_ERROR_CMD_BAD) {
 //		for (int i = 0; i < 3000000; i++);
 //		count++;
 	}
@@ -208,7 +211,6 @@ int main(void)
 	do {
 		status = esp_SetWiFiMode(ESP_MODE3);
 		if (status == ESP_ERROR_CMD_BUSY) {
-			for (int i = 0; i < 1000000; i++);
 			continue;
 		}
 	}
@@ -226,22 +228,23 @@ int main(void)
 	while(esp_setTimeout(180) != ESP_ERROR_CMD_OK) {
 		count++;
 	}
+#endif
 
 
 	TIM6->CR1 |= TIM_CR1_CEN;
 
-	initExti();
-	init_timer14();
-	init_timer3();
+//	initExti();
+//	init_timer14();
+//	init_timer3();
 	char package[] = "st00=000000;V000=000000;P000=000000;Tnw0=000000;Tcw0=000000;Tlr0=000000;Cb00=000000;\0";
-	convert(&package[17], 235746);
-
-	/* Infinite loop */
-	uint16_t temp_count = 1;;
+//	IntToStr(&package[17], 235746);
+//
+//	/* Infinite loop */
+//	uint16_t temp_count = 1;;
 	while (1)
 	{
 		if (work_esp(package, 85)) {
-			convert(&package[17], temp_count++);
+//			IntToStr(&package[17], temp_count++);
 		}
 	}
 }

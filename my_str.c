@@ -22,8 +22,9 @@ uint8_t strCmp(uint8_t* str1, uint8_t* str2) {
         ++i;
     }
 
-    if (str1[i] == 0x00)
+    if (str1[i] == 0x00) {
         return 2;
+    }
     return 1;
 }
 
@@ -68,14 +69,36 @@ uint8_t intToStr(uint16_t num, uint8_t* numStr) {
 	return 0;
 }
 
-uint16_t strToInt(const uint8_t* str, uint8_t size) {
+int16_t strToInt(const uint8_t* str, uint8_t size) {
 	uint16_t num = 0;
 
 	for (int i = size-1; i >= 0; i--) {
+		if (str[i] > 0x39 || str[i] < 0x30) {
+			return -1;
+		}
 		num += (str[i] - 0x30) * pow(10, size-1 - i);
 	}
 
 	return num;
+}
+
+void IntToStr(char* convertnum, int num) {
+	int a = num / 100000;
+	convertnum[0] = a + 0x30;
+	num = num - (a * 100000);
+	a = num / 10000;
+	convertnum[1] = a + 0x30;
+	num = num - (a * 10000);
+	a = num / 1000;
+	convertnum[2] = a + 0x30;
+	num = num - (a * 1000);
+	a = num / 100;
+	convertnum[3] = a + 0x30;
+	num = num - (a * 100);
+	a = num / 10;
+	convertnum[4] = a + 0x30;
+	num = num - (a * 10);
+	convertnum[5] = num + 0x30;
 }
 
 

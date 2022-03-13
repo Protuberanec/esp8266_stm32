@@ -82,7 +82,8 @@ uint8_t bufferGetAtIndex(cBuffer* buffer, uint16_t index)
 uint8_t bufferAddToEnd(cBuffer* buffer, uint8_t data)
 {
     // make sure the buffer has room
-    if (buffer->datalength < buffer->size)
+
+	if (buffer->datalength < buffer->size)
     {
 		// save data byte at end of buffer
 		buffer->dataptr[(buffer->dataindex + buffer->datalength) % buffer->size] = data;
@@ -91,15 +92,14 @@ uint8_t bufferAddToEnd(cBuffer* buffer, uint8_t data)
 		// return success
 		return(-1);
     }
-    else
-    	return(0);
+    return(0);
 }
 
 uint8_t bufferIsNotFull(cBuffer* buffer)
 {
     // check to see if the buffer has room
     // return true if there is room
-    return(buffer->datalength < buffer->size);
+    return (buffer->datalength < buffer->size);
 }
 
 void bufferFlush(cBuffer* buffer)
